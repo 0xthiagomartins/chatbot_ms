@@ -3,3 +3,7 @@ langchain-openai
 langchain-anthropic
 langchain-google-vertexai
 sqlmodel-controller[all]
+pytest
+pytest-cov
+python-dotenv
+nameko==3.0.0-rc11

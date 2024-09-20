@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  chatbot_ms:
+    build: .
+    command: nameko run --config src/config.yml src.service
+    volumes:
+      - .:/app
+    environment:
+      - RABBIT_PROTOCOL=${RABBIT_PROTOCOL}
+      - RABBIT_USER=${RABBIT_USER}
+      - RABBIT_PASSWORD=${RABBIT_PASSWORD}
+      - RABBIT_HOST=${RABBITMQ_IP_ADDRESS}
+      - RABBIT_PORT=${RABBIT_PORT}
+    restart: always
+    networks:
+      - backend
+
+
+networks:
+  backend:
+    external: true

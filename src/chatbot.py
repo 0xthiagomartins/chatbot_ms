@@ -31,7 +31,14 @@ class ChatbotService:
         ]
     )
 
-    def __init__(self, user_id: int, model: str, conversation_id: int = None):
+    def __init__(
+        self,
+        user_id: int,
+        model: str,
+        conversation_id: int = None,
+        trimmed: bool = True,
+    ):
+        self.trimmed = trimmed
         self.model = self.__get_model(model)
         self.parser = StrOutputParser()
         self.user_id = user_id
@@ -41,15 +48,26 @@ class ChatbotService:
         return MODELS[model](model=model)
 
     def __get_conversation(self, conversation_id: int = None):
-        conversation = orm.Conversation.get(
+        conversation = orm.conversations.get(
             by=["id", "user_id"],
             value=[conversation_id, self.user_id],
             join=["messages"],
-        ) or orm.Conversation.create(
+        ) or orm.conversations.create(
             data={"user_id": self.user_id},
             returns_object=True,
         )
         return conversation
+
+    def __get_chain(self):
+        if self.trimmed:
+            trimmer = trim_messages(
+                max_tokens=45,
+                strategy="last",
+                token_counter=self.model,
+                include_system=True,
+            )
+            return trimmer | self.prompt | self.model | self.parser
+        return self.prompt | self.model | self.parser
 
     def get_messages(self) -> list[BaseMessage]:
         messages: list[dict[str, str]] = self.conversation.get("messages", [])
@@ -65,17 +83,8 @@ class ChatbotService:
 
         return parsed_messages
 
-    def send_message(self, message: str, trimmed: bool = True):
-        if trimmed:
-            trimmer = trim_messages(
-                max_tokens=45,
-                strategy="last",
-                token_counter=self.model,
-                include_system=True,
-            )
-            chain = trimmer | self.prompt | self.model | self.parser
-        else:
-            chain = self.prompt | self.model | self.parser
+    def send(self, message: str):
+        chain = self.__get_chain()
         chain_with_history = RunnableWithMessageHistory(
             chain,
             self.get_messages,

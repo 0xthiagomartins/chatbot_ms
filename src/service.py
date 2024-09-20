@@ -1,11 +1,13 @@
 from nameko.rpc import rpc
 from .chatbot import ChatbotService
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
-class ChatService:
-    def __init__(self):
-        self.chatbot = ChatbotService()
+class RPCChatbot:
+    name = "chatbot"
 
     @rpc
-    def send_message(self, user_id, message):
-        return self.chatbot.process_message(user_id, message)
+    def send_message(self, user_id, model: str, message: str):
+        return ChatbotService(user_id, model).send(message)
