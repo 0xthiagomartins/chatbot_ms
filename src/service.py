@@ -9,5 +9,5 @@ class RPCChatbot:
     name = "chatbot"
 
     @rpc
-    def send_message(self, user_id, model: str, message: str):
+    def send_message(self, user_id: int, model: str, message: str) -> str:
         return ChatbotService(user_id, model).send(message)

@@ -2,6 +2,7 @@ langchain
 langchain-openai
 langchain-anthropic
 langchain-google-vertexai
+langchain-google-genai
 sqlmodel-controller[all]
 pytest
 pytest-cov

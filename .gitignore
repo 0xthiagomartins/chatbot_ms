@@ -3,3 +3,5 @@ __pycache__
 .env
 PROPOSALS.md
 database.db
+coverage.xml
+.coverage

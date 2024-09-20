@@ -26,8 +26,3 @@ def user_id():
 def test_send_message(chatbot):
     response = chatbot.send(message="Hello")
     assert response is not None
-
-
-def test_send_message_with_history(chatbot, history):
-    response = chatbot.send(message="Hello", history=history)
-    assert response is not None

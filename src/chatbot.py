@@ -1,6 +1,6 @@
 from langchain_openai import ChatOpenAI
 from langchain_anthropic import ChatAnthropic
-from langchain_google_vertexai import ChatVertexAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.runnables import Runnable
 from langchain_core.messages import (
     BaseMessage,
@@ -12,14 +12,24 @@ from langchain_core.messages import (
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.output_parsers import StrOutputParser
+from langchain_core.chat_history import BaseChatMessageHistory
 from . import orm
 
 MODELS = {
     "gpt-3.5-turbo": ChatOpenAI,
     "claude-3-5-sonnet-20240620": ChatAnthropic,
-    "gemini-1.5-flash": ChatVertexAI,
+    "gemini-1.5-flash": ChatGoogleGenerativeAI,
+    "gemini-1.5-pro": ChatGoogleGenerativeAI,
 }
 SYSTEM_MESSAGE: BaseMessage = SystemMessage(content="You are a helpful assistant.")
+
+
+class ChatMessageHistory(BaseChatMessageHistory):
+    def __init__(self):
+        self.messages = []
+
+    def clear(self):
+        self.messages = []
 
 
 class ChatbotService:
@@ -36,7 +46,7 @@ class ChatbotService:
         user_id: int,
         model: str,
         conversation_id: int = None,
-        trimmed: bool = True,
+        trimmed: bool = False,
     ):
         self.trimmed = trimmed
         self.model = self.__get_model(model)
@@ -51,7 +61,7 @@ class ChatbotService:
         conversation = orm.conversations.get(
             by=["id", "user_id"],
             value=[conversation_id, self.user_id],
-            join=["messages"],
+            joins=["messages"],
         ) or orm.conversations.create(
             data={"user_id": self.user_id},
             returns_object=True,
@@ -66,29 +76,37 @@ class ChatbotService:
                 token_counter=self.model,
                 include_system=True,
             )
-            return trimmer | self.prompt | self.model | self.parser
-        return self.prompt | self.model | self.parser
+            return trimmer | self.prompt | self.model
+        return self.prompt | self.model
 
-    def get_messages(self) -> list[BaseMessage]:
+    def get_messages(self) -> BaseChatMessageHistory:
         messages: list[dict[str, str]] = self.conversation.get("messages", [])
-        parsed_messages: list[BaseMessage] = []
+        history = ChatMessageHistory()
         for msg in messages:
             match msg.get("role"):
-                case "user":
-                    parsed_messages.append(HumanMessage(content=msg.get("content")))
+                case "human":
+                    history.messages.append(HumanMessage(content=msg.get("content")))
                 case "ai":
-                    parsed_messages.append(AIMessage(content=msg.get("content")))
+                    history.messages.append(AIMessage(content=msg.get("content")))
                 case _:
                     raise ValueError(f"Unknown message type: {msg.get('role')}")
 
-        return parsed_messages
+        return history
 
     def send(self, message: str):
         chain = self.__get_chain()
         chain_with_history = RunnableWithMessageHistory(
             chain,
-            self.get_messages,
+            get_session_history=self.get_messages,
             input_messages_key="question",
             history_messages_key="history",
         )
-        return chain_with_history.invoke([HumanMessage(content=message)])
+        ai_message: AIMessage = chain_with_history.invoke({"question": message})
+        orm.messages.create(
+            data={
+                "conversation_id": self.conversation["id"],
+                "content": ai_message.content,
+                "is_from_user": False,
+            }
+        )
+        return ai_message.content
