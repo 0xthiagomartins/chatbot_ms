@@ -41,7 +41,7 @@ class ConversationMessage(BaseID, table=True):
     conversation_id: int = F(foreign_key="conversations.id")
     content: str
     timestamp: datetime = F(default_factory=datetime.utcnow)
-    is_from_user: bool
+    type: str  # ai, human or system
 
     conversation: Conversation = Relationship(back_populates="messages")
 

@@ -21,12 +21,21 @@ MODELS = {
     "gemini-1.5-flash": ChatGoogleGenerativeAI,
     "gemini-1.5-pro": ChatGoogleGenerativeAI,
 }
-SYSTEM_MESSAGE: BaseMessage = SystemMessage(content="You are a helpful assistant.")
 
 
 class ChatMessageHistory(BaseChatMessageHistory):
-    def __init__(self):
-        self.messages = []
+    def __init__(self, messages: list = []):
+        self.messages: list[BaseMessage] = []
+        for msg in messages:
+            match msg.get("type"):
+                case "human":
+                    self.messages.append(HumanMessage(content=msg.get("content")))
+                case "ai":
+                    self.messages.append(AIMessage(content=msg.get("content")))
+                case "system":
+                    self.messages.append(SystemMessage(content=msg.get("content")))
+                case _:
+                    raise ValueError(f"Unknown message type: {msg.get('type')}")
 
     def clear(self):
         self.messages = []
@@ -35,9 +44,9 @@ class ChatMessageHistory(BaseChatMessageHistory):
 class ChatbotService:
     prompt = ChatPromptTemplate.from_messages(
         [
-            SYSTEM_MESSAGE,
-            MessagesPlaceholder(variable_name="history"),
-            HumanMessage(content="{question}"),
+            SystemMessage(content="You are a helpful assistant and a good joker"),
+            MessagesPlaceholder(variable_name="conversation", optional=True),
+            HumanMessage(content="{user_message}"),
         ]
     )
 
@@ -66,6 +75,7 @@ class ChatbotService:
             data={"user_id": self.user_id},
             returns_object=True,
         )
+        conversation["messages"] = conversation.get("messages", [])
         return conversation
 
     def __get_chain(self):
@@ -81,32 +91,27 @@ class ChatbotService:
 
     def get_messages(self) -> BaseChatMessageHistory:
         messages: list[dict[str, str]] = self.conversation.get("messages", [])
-        history = ChatMessageHistory()
-        for msg in messages:
-            match msg.get("role"):
-                case "human":
-                    history.messages.append(HumanMessage(content=msg.get("content")))
-                case "ai":
-                    history.messages.append(AIMessage(content=msg.get("content")))
-                case _:
-                    raise ValueError(f"Unknown message type: {msg.get('role')}")
-
+        history: BaseChatMessageHistory = ChatMessageHistory(messages)
         return history
 
-    def send(self, message: str):
+    def send(self, message: str) -> str:
         chain = self.__get_chain()
         chain_with_history = RunnableWithMessageHistory(
             chain,
             get_session_history=self.get_messages,
-            input_messages_key="question",
-            history_messages_key="history",
+            input_messages_key="user_message",
+            history_messages_key="conversation",
         )
+        self.save_message(HumanMessage(content=message))
         ai_message: AIMessage = chain_with_history.invoke({"question": message})
-        orm.messages.create(
-            data={
-                "conversation_id": self.conversation["id"],
-                "content": ai_message.content,
-                "is_from_user": False,
-            }
-        )
+        self.save_message(ai_message)
         return ai_message.content
+
+    def save_message(self, lc_message: BaseMessage):
+        data = {
+            "conversation_id": self.conversation["id"],
+            "content": lc_message.content,
+            "type": lc_message.type,
+        }
+        orm.messages.create(data=data)
+        self.conversation["messages"].append(data)

@@ -8,7 +8,7 @@ def chatbot():
     return ChatbotService(user_id=1, model="gemini-1.5-flash")
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def history():
     return [
         {"role": "user", "content": "Hello"},
@@ -16,13 +16,38 @@ def history():
     ]
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def user_id():
-    user_id = orm.users.create(data={"username": "test", "password": "test"})
-    yield user_id
-    orm.users.delete(by="id", value=user_id)
+    user_id = orm.users.upsert(
+        by="username",
+        value="username",
+        data={
+            "username": "username",
+            "email": "email@email.com",
+            "hashed_password": "test",
+        },
+    )
+    return user_id
 
 
-def test_send_message(chatbot):
-    response = chatbot.send(message="Hello")
-    assert response is not None
+def _display(*args, **kwargs):
+    print("-~" * 10 + " MESSAGE " + "-~" * 10, end="\n\t")
+    print(*args, **kwargs)
+
+
+def test_send_messages(user_id):
+    chatbot = ChatbotService(user_id=user_id, model="gemini-1.5-pro")
+    messages = (
+        "Tell me a good joke",
+        "Tell me another joke",
+        "What was the first message that I've send to you?",
+    )
+    responses = []
+    for msg in messages:
+        response = chatbot.send(message=msg)
+        assert response is not None
+        responses.append(response)
+
+    for i in range(0, len(messages)):
+        _display(messages[i].replace("\n", "\n\t"))
+        _display(responses[i].replace("\n", "\n\t"))

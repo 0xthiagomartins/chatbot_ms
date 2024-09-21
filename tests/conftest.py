@@ -7,7 +7,7 @@ load_dotenv()
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def rabbitmq_config() -> dict[str, str]:
     protocol = os.getenv("RABBIT_PROTOCOL")
     user = os.getenv("RABBIT_USER")
