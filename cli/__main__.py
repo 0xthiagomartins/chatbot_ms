@@ -36,7 +36,7 @@ def conversation(
 
 @app.command()
 def test():
-    print("Hello World")
+    print("Test successful")
 
 
 if __name__ == "__main__":
