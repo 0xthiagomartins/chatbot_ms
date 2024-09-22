@@ -21,19 +21,33 @@ def display_message(message: str):
     print("[bold]-[/bold]" * 100)
 
 
-def start_chatting(chatbot: ChatbotService):
-    while True:
-        message = Prompt.ask("You: ", default="", show_default=False)
-        if message.lower() == "exit":
-            break
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            transient=True,
-        ) as progress:
-            progress.add_task(description="Thinking...", total=None)
-            response = chatbot.send(message=message)
-        print(f"Chatbot: {response}")
+def start_chatting(chatbot: ChatbotService, streamed: bool = False):
+    if not streamed:
+        while True:
+            message = Prompt.ask("You: ", default="", show_default=False)
+            if message.lower() == "exit":
+                break
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                transient=True,
+            ) as progress:
+                progress.add_task(description="Thinking...", total=None)
+                response = chatbot.send(message=message)
+            print(f"Chatbot: {response}")
+    else:
+        while True:
+            message = Prompt.ask("You: ", default="", show_default=False)
+            if message.lower() == "exit":
+                break
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                transient=True,
+            ) as progress:
+                progress.add_task(description="Thinking...", total=None)
+                for chunk in chatbot.send_streamed(message):
+                    print(chunk[0], end="", flush=True)
 
 
 @app.command()
@@ -56,6 +70,28 @@ def start_conversation(
         for message in chatbot.conversation.get("messages", []):
             display_message(message)
     start_chatting(chatbot)
+
+
+@app.command()
+def start_streamed_conversation(
+    user_id: int = Option(..., help="The user ID to start the conversation for"),
+    model: str = Option(..., help="The model to use for the conversation"),
+    conversation_id: int = Option(
+        None, help="The conversation ID to continue (optional)"
+    ),
+):
+    chatbot = ChatbotService(
+        user_id=user_id, model=model, conversation_id=conversation_id
+    )
+    print("Welcome to the chatbot! Type 'exit' to leave the conversation.")
+    if conversation_id:
+        print(
+            f"Continuing conversation with ID: {conversation_id} - {model} - {user_id}"
+        )
+        print("[bold]-[/bold]" * 100)
+        for message in chatbot.conversation.get("messages", []):
+            display_message(message)
+    start_chatting(chatbot, streamed=True)
 
 
 @app.command()

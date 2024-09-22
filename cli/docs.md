@@ -27,7 +27,7 @@ pip install -r requirements.txt
 - `--conversation-id <conversation_id>`: The conversation ID to continue. [Optional]
 
 ```bash
-python3 cli start-conversation --user-id <user_id> --model <model_name> --conversation-id <conversation_id> (optional)
+python3 cli start-conversation --user-id <INT> --model <STR> --conversation-id <OPTIONAL(INT)> 
 
 >>> Welcome to the chatbot! Type 'exit' to leave the conversation.
 >>> You: Hello, how are you?
@@ -41,6 +41,9 @@ python3 cli start-conversation --user-id <user_id> --model <model_name> --conver
 >>> You: exit
 ```
 
+```bash
+python3 cli start-streamed-conversation --user-id <INT> --model <STR> --conversation-id <OPTIONAL(INT)>
+```
 ### Test the CLI
 
 ```bash

@@ -7,6 +7,7 @@ from langchain_core.messages import (
     SystemMessage,
     HumanMessage,
     AIMessage,
+    AIMessageChunk,
     trim_messages,
 )
 from langchain_core.runnables.history import RunnableWithMessageHistory
@@ -93,7 +94,7 @@ class ChatbotService:
                 max_tokens=45,
                 strategy="last",
                 token_counter=self.model,
-                include_system=True,
+                # include_system=True,
                 allow_partial=False,
                 start_on="human",
             )
@@ -118,6 +119,22 @@ class ChatbotService:
         ai_message: AIMessage = chain_with_history.invoke({"user_message": message})
         self.__save_message(ai_message)
         return ai_message.content
+
+    def send_streamed(self, message: str):
+        chain = self.__get_chain()
+        chain_with_history = RunnableWithMessageHistory(
+            chain,
+            get_session_history=lambda: self.history,
+            input_messages_key="user_message",
+            history_messages_key="conversation",
+        )
+        self.__save_message(HumanMessage(content=message))
+        ai_message_content: str = ""
+        for chunk in chain_with_history.stream({"user_message": message}):
+            ai_message_content += chunk.content
+            yield chunk.content, "ai", self.user_id, self.conversation["id"]
+        self.__save_message(AIMessage(content=ai_message_content))
+        return
 
     def __save_message(self, lc_message: BaseMessage):
         data = {
