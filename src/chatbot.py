@@ -14,6 +14,9 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.chat_history import BaseChatMessageHistory
 from . import orm
+from operator import itemgetter
+
+from langchain_core.runnables import RunnablePassthrough
 
 MODELS = {
     "gpt-3.5-turbo": ChatOpenAI,
@@ -58,7 +61,7 @@ class ChatbotService:
         user_id: int,
         model: str,
         conversation_id: int = None,
-        trimmed: bool = False,
+        trimmed: bool = True,
     ):
         self.trimmed = trimmed
         self.model = self.__get_model(model)
@@ -91,8 +94,16 @@ class ChatbotService:
                 strategy="last",
                 token_counter=self.model,
                 include_system=True,
+                allow_partial=False,
+                start_on="human",
             )
-            return trimmer | self.prompt | self.model
+            return (
+                RunnablePassthrough.assign(
+                    messages=itemgetter("conversation") | trimmer
+                )
+                | self.prompt
+                | self.model
+            )
         return self.prompt | self.model
 
     def send(self, message: str) -> str:
