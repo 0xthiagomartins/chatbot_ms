@@ -25,15 +25,15 @@ MODELS = {
 
 class ChatMessageHistory(BaseChatMessageHistory):
     def __init__(self, messages: list = []):
-        self.messages: list[BaseMessage] = messages
+        self.messages: list[BaseMessage] = []
         for msg in messages:
             match msg.get("type"):
                 case "human":
-                    self.messages.append(HumanMessage(content=msg.get("content")))
+                    self.add_message(HumanMessage(content=msg.get("content")))
                 case "ai":
-                    self.messages.append(AIMessage(content=msg.get("content")))
+                    self.add_message(AIMessage(content=msg.get("content")))
                 case "system":
-                    self.messages.append(SystemMessage(content=msg.get("content")))
+                    self.add_message(SystemMessage(content=msg.get("content")))
                 case _:
                     raise ValueError(f"Unknown message type: {msg.get('type')}")
 

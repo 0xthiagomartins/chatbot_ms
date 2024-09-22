@@ -8,18 +8,20 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from typer import Typer, Option
 from rich.prompt import Prompt
 from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich import print
 from src.chatbot import ChatbotService
+from src import orm
 
 app = Typer()
 
 
-@app.command()
-def conversation(
-    user_id: int = Option(..., help="The user ID to start the conversation for"),
-    model: str = Option(..., help="The model to use for the conversation"),
-):
-    chatbot = ChatbotService(user_id=user_id, model=model)
-    print("Welcome to the chatbot! Type 'exit' to leave the conversation.")
+def display_message(message: str):
+    # I want a horizontal line
+    print(f"[bold]{message['type']}[/bold]: {message['content']}")
+    print("[bold]-[/bold]" * 100)
+
+
+def start_chatting(chatbot: ChatbotService):
     while True:
         message = Prompt.ask("You: ", default="", show_default=False)
         if message.lower() == "exit":
@@ -32,6 +34,47 @@ def conversation(
             progress.add_task(description="Thinking...", total=None)
             response = chatbot.send(message=message)
         print(f"Chatbot: {response}")
+
+
+@app.command()
+def start_conversation(
+    user_id: int = Option(..., help="The user ID to start the conversation for"),
+    model: str = Option(..., help="The model to use for the conversation"),
+    conversation_id: int = Option(
+        None, help="The conversation ID to continue (optional)"
+    ),
+):
+    chatbot = ChatbotService(
+        user_id=user_id, model=model, conversation_id=conversation_id
+    )
+    print("Welcome to the chatbot! Type 'exit' to leave the conversation.")
+    if conversation_id:
+        print(
+            f"Continuing conversation with ID: {conversation_id} - {model} - {user_id}"
+        )
+        print("[bold]-[/bold]" * 100)
+        for message in chatbot.conversation.get("messages", []):
+            display_message(message)
+    start_chatting(chatbot)
+
+
+@app.command()
+def list_conversations(
+    user_id: int = Option(..., help="The user ID to list conversations for")
+):
+    conversations = orm.conversations.list(
+        filter={"user_id": user_id, "archived": False},
+        order={"updated_at": "desc"},
+        mode="all",
+    )
+    for conversation in conversations:
+        print(
+            {
+                "id": conversation["id"],
+                "title": conversation["title"],
+                "updated_at": conversation["updated_at"],
+            }
+        )
 
 
 @app.command()
