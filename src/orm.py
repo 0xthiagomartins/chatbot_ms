@@ -54,7 +54,7 @@ from sqlmodel import SQLModel
 
 
 DATABASE_URL = "sqlite:///./database.db"
-engine = create_engine(DATABASE_URL, echo=True)
+engine = create_engine(DATABASE_URL, echo=False)
 # Controllers
 users = Controller[User](engine=engine)
 messages = Controller[ConversationMessage](engine=engine)

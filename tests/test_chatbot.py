@@ -8,14 +8,6 @@ def chatbot():
     return ChatbotService(user_id=1, model="gemini-1.5-flash")
 
 
-@pytest.fixture(scope="function")
-def history():
-    return [
-        {"role": "user", "content": "Hello"},
-        {"role": "ai", "content": "Hello"},
-    ]
-
-
 @pytest.fixture(scope="module")
 def user_id():
     user_id = orm.users.upsert(

@@ -25,7 +25,7 @@ MODELS = {
 
 class ChatMessageHistory(BaseChatMessageHistory):
     def __init__(self, messages: list = []):
-        self.messages: list[BaseMessage] = []
+        self.messages: list[BaseMessage] = messages
         for msg in messages:
             match msg.get("type"):
                 case "human":
@@ -39,6 +39,9 @@ class ChatMessageHistory(BaseChatMessageHistory):
 
     def clear(self):
         self.messages = []
+
+    def add_message(self, message: BaseMessage):
+        self.messages.append(message)
 
 
 class ChatbotService:
@@ -61,7 +64,10 @@ class ChatbotService:
         self.model = self.__get_model(model)
         self.parser = StrOutputParser()
         self.user_id = user_id
-        self.conversation = self.__get_conversation(conversation_id)
+        self.conversation: dict = self.__get_conversation(conversation_id)
+        self.history: BaseChatMessageHistory = ChatMessageHistory(
+            self.conversation.get("messages", [])
+        )
 
     def __get_model(self, model: str) -> Runnable:
         return MODELS[model](model=model)
@@ -89,25 +95,20 @@ class ChatbotService:
             return trimmer | self.prompt | self.model
         return self.prompt | self.model
 
-    def get_messages(self) -> BaseChatMessageHistory:
-        messages: list[dict[str, str]] = self.conversation.get("messages", [])
-        history: BaseChatMessageHistory = ChatMessageHistory(messages)
-        return history
-
     def send(self, message: str) -> str:
         chain = self.__get_chain()
         chain_with_history = RunnableWithMessageHistory(
             chain,
-            get_session_history=self.get_messages,
+            get_session_history=lambda: self.history,
             input_messages_key="user_message",
             history_messages_key="conversation",
         )
-        self.save_message(HumanMessage(content=message))
-        ai_message: AIMessage = chain_with_history.invoke({"question": message})
-        self.save_message(ai_message)
+        self.__save_message(HumanMessage(content=message))
+        ai_message: AIMessage = chain_with_history.invoke({"user_message": message})
+        self.__save_message(ai_message)
         return ai_message.content
 
-    def save_message(self, lc_message: BaseMessage):
+    def __save_message(self, lc_message: BaseMessage):
         data = {
             "conversation_id": self.conversation["id"],
             "content": lc_message.content,
