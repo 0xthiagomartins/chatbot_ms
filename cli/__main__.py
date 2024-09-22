@@ -6,6 +6,8 @@ load_dotenv()
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from typer import Typer, Option
+from rich.prompt import Prompt
+from rich.progress import Progress, SpinnerColumn, TextColumn
 from src.chatbot import ChatbotService
 
 app = Typer()
@@ -19,10 +21,16 @@ def conversation(
     chatbot = ChatbotService(user_id=user_id, model=model)
     print("Welcome to the chatbot! Type 'exit' to leave the conversation.")
     while True:
-        message = input("You: ")
+        message = Prompt.ask("You: ", default="", show_default=False)
         if message.lower() == "exit":
             break
-        response = chatbot.send(message=message)
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            transient=True,
+        ) as progress:
+            progress.add_task(description="Thinking...", total=None)
+            response = chatbot.send(message=message)
         print(f"Chatbot: {response}")
 
 
