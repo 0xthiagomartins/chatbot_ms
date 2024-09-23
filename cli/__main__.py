@@ -17,11 +17,11 @@ app = Typer()
 
 def display_message(message: str):
     # I want a horizontal line
-    print(f"[bold]{message['type']}[/bold]: {message['content']}")
+    print(f"[bold]{message.type}[/bold]: {message.content}")
     print("[bold]-[/bold]" * 100)
 
 
-def start_chatting(chatbot: ChatbotService, streamed: bool = False):
+def start_chatting(chatbot: ChatbotService, model: str, streamed: bool = False):
     if not streamed:
         while True:
             message = Prompt.ask("You: ", default="", show_default=False)
@@ -33,7 +33,7 @@ def start_chatting(chatbot: ChatbotService, streamed: bool = False):
                 transient=True,
             ) as progress:
                 progress.add_task(description="Thinking...", total=None)
-                response = chatbot.send(message=message)
+                response = chatbot.send(message=message, model=model)
             print(f"Chatbot: {response}")
     else:
         while True:
@@ -46,7 +46,7 @@ def start_chatting(chatbot: ChatbotService, streamed: bool = False):
                 transient=True,
             ) as progress:
                 progress.add_task(description="Thinking...", total=None)
-                for chunk in chatbot.send_streamed(message):
+                for chunk in chatbot.send_streamed(message, model=model):
                     print(chunk[0], end="", flush=True)
 
 
@@ -58,18 +58,16 @@ def start_conversation(
         None, help="The conversation ID to continue (optional)"
     ),
 ):
-    chatbot = ChatbotService(
-        user_id=user_id, model=model, conversation_id=conversation_id
-    )
+    chatbot = ChatbotService(user_id=user_id, conversation_id=conversation_id)
     print("Welcome to the chatbot! Type 'exit' to leave the conversation.")
     if conversation_id:
         print(
             f"Continuing conversation with ID: {conversation_id} - {model} - {user_id}"
         )
         print("[bold]-[/bold]" * 100)
-        for message in chatbot.conversation.get("messages", []):
+        for message in chatbot.get_history(user_id, conversation_id).messages:
             display_message(message)
-    start_chatting(chatbot)
+    start_chatting(chatbot, model)
 
 
 @app.command()
@@ -80,18 +78,16 @@ def start_streamed_conversation(
         None, help="The conversation ID to continue (optional)"
     ),
 ):
-    chatbot = ChatbotService(
-        user_id=user_id, model=model, conversation_id=conversation_id
-    )
+    chatbot = ChatbotService(user_id=user_id, conversation_id=conversation_id)
     print("Welcome to the chatbot! Type 'exit' to leave the conversation.")
     if conversation_id:
         print(
             f"Continuing conversation with ID: {conversation_id} - {model} - {user_id}"
         )
         print("[bold]-[/bold]" * 100)
-        for message in chatbot.conversation.get("messages", []):
+        for message in chatbot.get_history(user_id, conversation_id).messages:
             display_message(message)
-    start_chatting(chatbot, streamed=True)
+    start_chatting(chatbot, model, streamed=True)
 
 
 @app.command()

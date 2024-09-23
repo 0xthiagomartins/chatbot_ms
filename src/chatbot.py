@@ -100,7 +100,6 @@ class ChatbotService:
     ):
         self.user_id = user_id
         self.conversation_id = conversation_id
-        self.history = History(self.user_id, self.conversation_id)
 
     def get_history(self, user_id: int, conversation_id: int) -> Runnable:
         return History(user_id, conversation_id).retrieve()

@@ -1,6 +1,5 @@
 from nameko.rpc import rpc
 from nameko.events import event_handler, EventDispatcher
-import json
 from .chatbot import ChatbotService
 from . import orm
 from dotenv import load_dotenv
@@ -12,6 +11,10 @@ class RPCChatbot:
     name = "chatbot"
 
     dispatch = EventDispatcher()
+    session = {
+        "user_id": 1,
+        "conversation_id": 63,
+    }
     received_messages = []
 
     @rpc
