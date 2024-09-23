@@ -32,14 +32,14 @@ class RPCChatbot:
     def send_message(
         self, user_id: int, model: str, message: str, conversation_id: int = None
     ) -> str:
-        return ChatbotService(user_id, model, conversation_id).send(message)
+        return ChatbotService(user_id, conversation_id).send(message, model)
 
     @rpc
     def send_streamed_message(
         self, user_id: int, model: str, message: str, conversation_id: int = None
     ):
-        for chunk in ChatbotService(user_id, model, conversation_id).send_streamed(
-            message
+        for chunk in ChatbotService(user_id, conversation_id).send_streamed(
+            message, model
         ):
             self.dispatch("stream_event", chunk)
 

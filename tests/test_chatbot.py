@@ -5,7 +5,7 @@ from src import orm
 
 @pytest.fixture
 def chatbot():
-    return ChatbotService(user_id=1, model="gemini-1.5-flash")
+    return ChatbotService(user_id=1)
 
 
 @pytest.fixture(scope="module")
@@ -28,7 +28,7 @@ def _display(*args, **kwargs):
 
 
 def test_send_messages(user_id):
-    chatbot = ChatbotService(user_id=user_id, model="gemini-1.5-pro")
+    chatbot = ChatbotService(user_id=user_id)
     messages = (
         "Tell me a good joke",
         "Tell me another joke",
@@ -36,7 +36,7 @@ def test_send_messages(user_id):
     )
     responses = []
     for msg in messages:
-        response = chatbot.send(message=msg)
+        response = chatbot.send(message=msg, model="gemini-1.5-flash")
         assert response is not None
         responses.append(response)
 
