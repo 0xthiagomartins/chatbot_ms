@@ -3,7 +3,7 @@ version: '3.8'
 services:
   chatbot_ms:
     build: .
-    command: nameko run --config src/config.yml src.service
+    command: nameko run --config src/config.yml src.rpc
     volumes:
       - .:/app
     environment:
