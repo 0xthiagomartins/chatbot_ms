@@ -14,7 +14,7 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.chat_history import BaseChatMessageHistory
 from . import orm
 from operator import itemgetter
-
+from langchain_core.language_models import BaseChatModel
 from langchain_core.runnables import RunnablePassthrough
 
 MODELS = {
@@ -33,6 +33,7 @@ class History(BaseChatMessageHistory):
     def __init__(self, user_id: int, conversation_id: int):
         self.user_id = user_id
         self.conversation_id = conversation_id
+        self.load()
 
     def __persist_messages(self, messages: list[BaseMessage]):
         for message in messages or self.messages:
@@ -77,10 +78,9 @@ class History(BaseChatMessageHistory):
         self.messages.append(message)
         self.__persist_messages([message])
 
-    def retrieve(self) -> BaseChatMessageHistory:
+    def load(self):
         conversation = self.__load_conversation()
         self.__set_messages(conversation.get("messages", []))
-        return self
 
 
 class ChatbotService:
@@ -91,7 +91,7 @@ class ChatbotService:
             HumanMessage(content="{user_message}"),
         ]
     )
-    trimmed: bool = True
+    trimmer: bool = True
 
     def __init__(
         self,
@@ -100,15 +100,12 @@ class ChatbotService:
     ):
         self.user_id = user_id
         self.conversation_id = conversation_id
+        self.chain = self.__get_chain()
 
-    def get_history(self, user_id: int, conversation_id: int) -> Runnable:
-        return History(user_id, conversation_id).retrieve()
-
-    def model(self, model: str) -> Runnable:
+    def model(self, model: str) -> BaseChatModel:
         return MODELS[model](model=model)
 
     def __get_chain(self, model: str) -> Runnable:
-        # TODO: add history to the chain
         if self.trimmed:
             trimmer = trim_messages(
                 max_tokens=45,
@@ -128,7 +125,7 @@ class ChatbotService:
         else:
             chain = self.prompt | self.model(model)
 
-        get_session_history = lambda session_id: History(*session_id).retrieve()
+        get_session_history = lambda session_id: History(*session_id)
 
         chain_with_history = RunnableWithMessageHistory(
             chain,
